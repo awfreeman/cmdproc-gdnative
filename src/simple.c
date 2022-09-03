@@ -1,9 +1,20 @@
 #include <gdnative_api_struct.gen.h>
 #include <string.h>
+#include <curl/curl.h>
 
 typedef struct user_data_struct {
-	char data[256];
+	//CURL stuff
+	CURL *curl;
+	CURLcode res;
 } user_data_struct;
+
+//more curl stuff
+static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+  size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
+  return written;
+}
+
 
 // GDNative supports a large collection of functions for calling back
 // into the main Godot executable. In order for your module to have
@@ -16,7 +27,9 @@ const godot_gdnative_ext_nativescript_api_struct *nativescript_api = NULL;
 // for our object. A constructor and destructor are both necessary.
 GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_data);
 GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_data, void *p_user_data);
-godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
+//godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
+
+godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 
 // `gdnative_init` is a function that initializes our dynamic library.
 // Godot will give it a pointer to a structure that contains various bits of
@@ -60,10 +73,10 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	//   this is not true inheritance but it's close enough.
 	// * Finally, the fourth and fifth parameters are descriptions
 	//   for our constructor and destructor, respectively.
-	nativescript_api->godot_nativescript_register_class(p_handle, "SIMPLE", "Reference", create, destroy);
+	nativescript_api->godot_nativescript_register_class(p_handle, "GDDL", "Reference", create, destroy);
 
-	godot_instance_method get_data = { NULL, NULL, NULL };
-	get_data.method = &simple_get_data;
+	godot_instance_method download_file = { NULL, NULL, NULL };
+	download_file.method = &gddl_download_file;
 
 	godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
 
@@ -76,7 +89,9 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	//   `godot_headers/nativescript/godot_nativescript.h` for possible values).
 	// * The fifth and final parameter is a description of which function
 	//   to call when the method gets called.
-	nativescript_api->godot_nativescript_register_method(p_handle, "SIMPLE", "get_data", attributes, get_data);
+	//nativescript_api->godot_nativescript_register_method(p_handle, "SIMPLE", "get_data", attributes, get_data);
+	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "download_file", attributes, download_file);
+
 }
 
 // In our constructor, allocate memory for our structure and fill
@@ -86,7 +101,11 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 // identifier in case multiple objects are instantiated.
 GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_data) {
 	user_data_struct *user_data = api->godot_alloc(sizeof(user_data_struct));
-	strcpy(user_data->data, "World from GDNative!");
+	//strcpy(user_data->data, "World from GDNative!");
+	user_data->curl = curl_easy_init();
+
+	curl_easy_setopt(user_data->curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data);
 
 	return user_data;
 }
@@ -94,6 +113,8 @@ GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_
 // The destructor is called when Godot is done with our
 // object and we free our instances' member data.
 GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_data, void *p_user_data) {
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	curl_easy_cleanup(user_data->curl);
 	api->godot_free(p_user_data);
 }
 
@@ -107,9 +128,40 @@ godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, voi
 	user_data_struct *user_data = (user_data_struct *)p_user_data;
 
 	api->godot_string_new(&data);
-	api->godot_string_parse_utf8(&data, user_data->data);
+	//api->godot_string_parse_utf8(&data, user_data->data);
 	api->godot_variant_new_string(&ret, &data);
 	api->godot_string_destroy(&data);
+
+	return ret;
+}
+
+godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
+	godot_variant ret;
+	api->godot_variant_new_nil(&ret);
+
+	if (p_num_args < 2)
+		return ret;
+	godot_string gd_url, gd_path;
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	
+	gd_url = api->godot_variant_as_string(p_args[0]);
+	godot_char_string url_char_string = api->godot_string_utf8(&gd_url);
+	const char *url = api->godot_char_string_get_data(&url_char_string);
+
+	gd_path = api->godot_variant_as_string(p_args[1]);
+	godot_char_string path_char_string = api->godot_string_utf8(&gd_path);
+	const char *path = api->godot_char_string_get_data(&path_char_string);
+
+	FILE* f = fopen(path, "wb");
+
+	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
+	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, f);
+
+	curl_easy_perform(user_data->curl);
+	fclose(f);
+
+	api->godot_char_string_destroy(&url_char_string);
+	api->godot_char_string_destroy(&path_char_string);
 
 	return ret;
 }

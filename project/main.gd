@@ -1,8 +1,8 @@
 extends Control
 
 # load the SIMPLE library
-const SIMPLE = preload("res://gdnative/simple.gdns")
-onready var data = SIMPLE.new()
+const GDDL = preload("res://gdnative/gddl.gdns")
+onready var data = GDDL.new()
 
 func _on_Button_pressed():
-	$Label.text = "Data = " + data.get_data()
+	data.download_file("https://crouton.net", "/tmp/crouton.html")

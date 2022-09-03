@@ -18,7 +18,7 @@ target_aliases = {
 opts.Add(EnumVariable("target", "Compilation target", "debug", ["debug", "release"], target_aliases))
 opts.Add(BoolVariable("use_llvm", "Use the LLVM / Clang compiler", "no"))
 opts.Add(PathVariable("target_path", "The path where the lib is installed.", "project/gdnative/"))
-opts.Add(PathVariable("target_name", "The library name.", "libsimple", PathVariable.PathAccept))
+opts.Add(PathVariable("target_name", "The library name.", "libdl", PathVariable.PathAccept))
 
 # Platform options. Use future-proofed names for platforms.
 platform_array = ["", "windows", "linuxbsd", "macos"]
@@ -173,7 +173,9 @@ else:
 env.Append(CPPPATH=["src/"])
 sources = Glob("src/*.c")
 
-library = env.SharedLibrary(target=env["target_path"] + env["target_name"], source=sources)
+vLibs = ["curl"]
+
+library = env.SharedLibrary(target=env["target_path"] + env["target_name"], source=sources, LIBS=vLibs)
 
 Default(library)
 
