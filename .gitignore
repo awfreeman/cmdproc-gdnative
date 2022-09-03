@@ -1,0 +1,6 @@
+*.dblite
+*.os
+
+*.so
+*.dylib
+*.dll
