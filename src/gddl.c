@@ -2,10 +2,19 @@
 #include <string.h>
 #include <curl/curl.h>
 
+typedef enum {
+	GDDL_OK,
+	GDDL_CURL,
+	GDDL_FILE,
+	GDDL_BAD_ARGS
+} gddl_err_code;
+
 typedef struct user_data_struct {
 	//CURL stuff
 	CURL *curl;
 	CURLcode res;
+	//Our error
+	gddl_err_code err;
 } user_data_struct;
 
 //more curl stuff
@@ -30,6 +39,7 @@ GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_da
 //godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 
 godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
+godot_variant gddl_get_error(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 
 // `gdnative_init` is a function that initializes our dynamic library.
 // Godot will give it a pointer to a structure that contains various bits of
@@ -76,7 +86,9 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	nativescript_api->godot_nativescript_register_class(p_handle, "GDDL", "Reference", create, destroy);
 
 	godot_instance_method download_file = { NULL, NULL, NULL };
+	godot_instance_method get_error = { NULL, NULL, NULL };
 	download_file.method = &gddl_download_file;
+	get_error.method = &gddl_get_error;
 
 	godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
 
@@ -91,6 +103,7 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	//   to call when the method gets called.
 	//nativescript_api->godot_nativescript_register_method(p_handle, "SIMPLE", "get_data", attributes, get_data);
 	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "download_file", attributes, download_file);
+	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "get_error", attributes, get_error);
 
 }
 
@@ -106,6 +119,9 @@ GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_
 
 	curl_easy_setopt(user_data->curl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data);
+
+	user_data->res = CURLE_OK;
+	user_data->err = GDDL_OK;
 
 	return user_data;
 }
@@ -136,13 +152,18 @@ godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, voi
 }
 
 godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
 	godot_variant ret;
+
 	api->godot_variant_new_nil(&ret);
 
-	if (p_num_args < 2)
+	if (p_num_args < 2) {
+		api->godot_variant_new_bool(&ret, false);
+		user_data->err = GDDL_BAD_ARGS;
 		return ret;
+	}
 	godot_string gd_url, gd_path;
-	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	
 	
 	gd_url = api->godot_variant_as_string(p_args[0]);
 	godot_char_string url_char_string = api->godot_string_utf8(&gd_url);
@@ -153,15 +174,59 @@ godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, 
 	const char *path = api->godot_char_string_get_data(&path_char_string);
 
 	FILE* f = fopen(path, "wb");
+	if (!f) {
+		api->godot_variant_new_bool(&ret, false);
+		user_data->err = GDDL_FILE;
+		return ret;
+	}
 
 	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, f);
 
-	curl_easy_perform(user_data->curl);
+	user_data->res = curl_easy_perform(user_data->curl);
 	fclose(f);
+	if (user_data->res != CURLE_OK) {
+		api->godot_variant_new_bool(&ret, false);
+		user_data->err = GDDL_CURL;
+		return ret;
+	}
 
 	api->godot_char_string_destroy(&url_char_string);
 	api->godot_char_string_destroy(&path_char_string);
+
+	api->godot_variant_new_bool(&ret, true);
+	user_data->err = GDDL_OK;
+	return ret;
+}
+
+godot_variant gddl_get_error(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	godot_variant ret;
+	godot_string str;
+
+	api->godot_string_new(&str);
+	
+	switch(user_data->err) {
+		case GDDL_OK:
+			api->godot_string_parse_utf8(&str, "No error.");
+			break;
+		case GDDL_CURL:
+			api->godot_string_parse_utf8(&str, curl_easy_strerror(user_data->res));
+			break;
+		case GDDL_FILE:
+			api->godot_string_parse_utf8(&str, "Error opening file to write.");
+			break;
+		case GDDL_BAD_ARGS:
+			api->godot_string_parse_utf8(&str, "Invalid arguments.");
+			break;
+		default:
+			char buf[256];
+			sprintf(buf, "Unknown error. Error code: %d", user_data->err);
+			api->godot_string_parse_utf8(&str, buf);
+			break;
+	}
+
+	api->godot_variant_new_string(&ret, &str);
 
 	return ret;
 }
