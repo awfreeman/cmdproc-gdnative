@@ -7,10 +7,10 @@ reloadable=true
 
 [entry]
 
-Windows.64="res://gdnative/windows/libdl.dll"
+Windows.64="res://gdnative/windows/libgddl.dll"
 OSX.64="res://gdnative/macos/libdl.dylib"
-X11.64="res://gdnative/linuxbsd/libdl.so"
-Server.64="res://gdnative/linuxbsd/libdl.so"
+X11.64="res://gdnative/linuxbsd/libgddl.so"
+Server.64="res://gdnative/linuxbsd/libgddl.so"
 
 [dependencies]
 
