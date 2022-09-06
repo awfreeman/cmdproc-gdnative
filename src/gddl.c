@@ -269,6 +269,8 @@ GD_METHOD(gddl_set_agent) {
 	curl_easy_setopt(user_data->curl, CURLOPT_USERAGENT, agent);
 
 	api->godot_char_string_destroy(&agent_char_string);
+
+	return ret;
 }
 
 GD_METHOD(gddl_get_error) {
