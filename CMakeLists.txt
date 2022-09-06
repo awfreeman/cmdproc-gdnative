@@ -41,6 +41,10 @@ if(WIN32)
             -MD
         )
     endif()
+
+    add_link_options(
+        -LIBPATH:"${CMAKE_CURRENT_SOURCE_DIR}/project/gdnative/${PLATFORM}"
+    )
 else()
     add_compile_options(
         -march=x86-64
@@ -64,6 +68,7 @@ else()
         -march=x86-64
         -Wl,--no-undefined
     )
+    #might have to add search path...
 endif()
 
 include_directories(godot-headers)

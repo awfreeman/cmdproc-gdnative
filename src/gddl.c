@@ -1,5 +1,6 @@
 #include <gdnative_api_struct.gen.h>
 #include <string.h>
+#include <stdlib.h>
 #include <curl/curl.h>
 
 typedef enum {
@@ -17,11 +18,28 @@ typedef struct user_data_struct {
 	gddl_err_code err;
 } user_data_struct;
 
+typedef struct string_dat {
+	char *buf;
+	size_t len;
+} string_dat;
+
 //more curl stuff
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
   size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
   return written;
+}
+
+static size_t write_data_to_string(void *ptr, size_t size, size_t nmemb, void *str_ptr)
+{
+	string_dat *s = (string_dat *)str_ptr;
+	size_t old_len = s->len;
+	s->len += size*nmemb;
+	s->buf = realloc(s->buf, s->len+1); //no idea why it needs to be +1 ?
+	memcpy(s->buf + old_len, ptr, size*nmemb);
+	s->buf[s->len] = '\0';
+
+	return size*nmemb;
 }
 
 
@@ -37,9 +55,12 @@ const godot_gdnative_ext_nativescript_api_struct *nativescript_api = NULL;
 GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_data);
 GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_data, void *p_user_data);
 //godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
+#define GD_METHOD(fname) godot_variant fname(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args)
 
-godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
-godot_variant gddl_get_error(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
+GD_METHOD(gddl_download_file);
+GD_METHOD(gddl_download_to_string);
+GD_METHOD(gddl_set_agent);
+GD_METHOD(gddl_get_error);
 
 // `gdnative_init` is a function that initializes our dynamic library.
 // Godot will give it a pointer to a structure that contains various bits of
@@ -86,8 +107,12 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	nativescript_api->godot_nativescript_register_class(p_handle, "GDDL", "Reference", create, destroy);
 
 	godot_instance_method download_file = { NULL, NULL, NULL };
+	godot_instance_method download_to_string = { NULL, NULL, NULL };
+	godot_instance_method set_agent = { NULL, NULL, NULL };
 	godot_instance_method get_error = { NULL, NULL, NULL };
 	download_file.method = &gddl_download_file;
+	download_to_string.method = &gddl_download_to_string;
+	set_agent.method = &gddl_set_agent;
 	get_error.method = &gddl_get_error;
 
 	godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
@@ -103,6 +128,8 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	//   to call when the method gets called.
 	//nativescript_api->godot_nativescript_register_method(p_handle, "SIMPLE", "get_data", attributes, get_data);
 	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "download_file", attributes, download_file);
+	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "download_to_string", attributes, download_to_string);
+	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "set_agent", attributes, set_agent);
 	nativescript_api->godot_nativescript_register_method(p_handle, "GDDL", "get_error", attributes, get_error);
 
 }
@@ -134,28 +161,11 @@ GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_da
 	api->godot_free(p_user_data);
 }
 
-// Data is always sent and returned as variants so in order to
-// return our data, which is a string, we first need to convert
-// our C string to a Godot string object, and then copy that
-// string object into the variant we are returning.
-godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
-	godot_string data;
-	godot_variant ret;
-	user_data_struct *user_data = (user_data_struct *)p_user_data;
-
-	api->godot_string_new(&data);
-	//api->godot_string_parse_utf8(&data, user_data->data);
-	api->godot_variant_new_string(&ret, &data);
-	api->godot_string_destroy(&data);
-
-	return ret;
-}
-
-godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
+GD_METHOD(gddl_download_file) {
 	user_data_struct *user_data = (user_data_struct *)p_user_data;
 	godot_variant ret;
 
-	api->godot_variant_new_nil(&ret);
+	//api->godot_variant_new_nil(&ret);
 
 	if (p_num_args < 2) {
 		api->godot_variant_new_bool(&ret, false);
@@ -181,6 +191,7 @@ godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, 
 	}
 
 	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
+	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, f);
 
 	user_data->res = curl_easy_perform(user_data->curl);
@@ -199,7 +210,68 @@ godot_variant gddl_download_file(godot_object *p_instance, void *p_method_data, 
 	return ret;
 }
 
-godot_variant gddl_get_error(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
+GD_METHOD(gddl_download_to_string) {
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	godot_variant ret;
+
+	if (p_num_args < 1) {
+		api->godot_variant_new_nil(&ret);
+		user_data->err = GDDL_BAD_ARGS;
+		return ret;
+	}
+	godot_string gd_url;
+	
+	
+	gd_url = api->godot_variant_as_string(p_args[0]);
+	godot_char_string url_char_string = api->godot_string_utf8(&gd_url);
+	const char *url = api->godot_char_string_get_data(&url_char_string);
+
+	string_dat ret_string;
+	ret_string.buf = NULL;
+	ret_string.len = 0;
+
+	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
+	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data_to_string);
+	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, &ret_string);
+
+	user_data->res = curl_easy_perform(user_data->curl);
+
+	if (user_data->res != CURLE_OK) {
+		api->godot_variant_new_nil(&ret);
+		user_data->err = GDDL_CURL;
+		return ret;
+	}
+
+	api->godot_char_string_destroy(&url_char_string);
+
+	godot_string gds_ret;
+	api->godot_string_new(&gds_ret);
+	api->godot_string_parse_utf8(&gds_ret, ret_string.buf);
+	api->godot_variant_new_string(&ret, &gds_ret);
+	user_data->err = GDDL_OK;
+	return ret;
+}
+
+GD_METHOD(gddl_set_agent) {
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	godot_variant ret;
+	api->godot_variant_new_nil(&ret);
+
+	if (p_num_args < 1)
+		return ret;
+	
+	godot_string gd_agent;
+
+	gd_agent = api->godot_variant_as_string(p_args[0]);
+	godot_char_string agent_char_string = api->godot_string_utf8(&gd_agent);
+	const char *agent = api->godot_char_string_get_data(&agent_char_string);
+
+	curl_easy_setopt(user_data->curl, CURLOPT_USERAGENT, agent);
+
+	api->godot_char_string_destroy(&agent_char_string);
+}
+
+GD_METHOD(gddl_get_error) {
 	user_data_struct *user_data = (user_data_struct *)p_user_data;
 	godot_variant ret;
 	godot_string str;

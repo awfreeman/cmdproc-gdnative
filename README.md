@@ -1,67 +1,22 @@
-# Simple example using C
+# gdnative-downloader
 
-This is a small example using C to create a GDNative script
-that just showcases some very simple bare bones calls.
+This is a simple gdnative plugin that uses libcurl to download files.
 
-Language: [GDNative C](https://docs.godotengine.org/en/latest/tutorials/scripting/gdnative/index.html)
+## Building
 
-Renderer: GLES 2
-
-Dependencies:
- * You need [Godot headers](https://github.com/godotengine/godot-headers),
-   this is now a Git submodule of this repo.
- * `clang`, `gcc`, or any decent C compiler that's C11 compatible.
-
-## Compile with SCons (cross platform)
-You can use SCons to compile the library if you have it installed:
+This is a standard cmake project. It can either be built with command line or loaded directly in visual studio. Command line example is:
 
 ```
-scons platform=PLATFORM
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-Where PLATFORM is: `windows`, `linuxbsd`, or `macos`.
-
-## Manually compiling
-
-### Linux
-To compile the library on Linux, do
-
-```
-cd src
-clang -std=c11 -fPIC -c -I../godot-headers simple.c -o simple.os
-clang -shared simple.os -o ../project/gdnative/linuxbsd/libsimple.so
-```
-
-This creates the file `libsimple.so` in the `project/gdnative/linuxbsd` directory.
-
-
-### macOS
-On macOS:
-
-```
-cd src
-clang -std=c11 -fPIC -c -I../godot-headers simple.c -o simple.os -arch x86_64
-clang -dynamiclib simple.os -o ../project/gdnative/macos/libsimple.dylib -arch x86_64
-```
-
-This creates the file `libsimple.dylib` in the `project/gdnative/macos` directory.
-
-
-### Windows
-On Windows:
-
-```
-cd src
-cl /Fosimple.obj /c simple.c /nologo -EHsc -DNDEBUG /MD /I. /I../godot-headers
-link /nologo /dll /out:..\project\gdnative\windows\libsimple.dll /implib:..\project\gdnative\windows\libsimple.lib simple.obj
-```
-
-This creates the file `libsimple.dll` in the `project/gdnative/windows` directory.
+Output bins will be placed in the `project/gdnative` folder. Simply copy the gdnative folder into your current godot project to use it.
 
 
 ## Usage
 
-Create a new object using `load("res://simple.gdns").new()`
+An example project is located in the `project` folder, but the following shows basic usage:
 
-This object has following methods you can use:
- * `get_data()`
