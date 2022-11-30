@@ -1,6 +1,6 @@
 # min version could probably be less than this.
 cmake_minimum_required(VERSION 3.20)
-
+add_subdirectory(zip)
 if (WIN32)
     set(PLATFORM windows)
 else()
@@ -76,4 +76,4 @@ include_directories(${CURL_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARIES} zip)

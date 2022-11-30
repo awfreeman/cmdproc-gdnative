@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <curl/curl.h>
-
+#include <zip.h>
 #define GD_METHOD(fname) godot_variant fname(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args)
 
 #define INIT_GD_METHOD(fname) \

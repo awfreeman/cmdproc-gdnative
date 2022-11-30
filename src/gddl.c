@@ -71,6 +71,7 @@ GD_METHOD(gddl_download_to_string);
 GD_METHOD(gddl_download_to_array);
 GD_METHOD(gddl_set_agent);
 GD_METHOD(gddl_get_error);
+GD_METHOD(gddl_unzip);
 
 // `gdnative_init` is a function that initializes our dynamic library.
 // Godot will give it a pointer to a structure that contains various bits of
@@ -124,6 +125,7 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	INIT_GD_METHOD(download_to_array);
 	INIT_GD_METHOD(set_agent);
 	INIT_GD_METHOD(get_error);
+	INIT_GD_METHOD(unzip);
 
 }
 
@@ -247,6 +249,8 @@ GD_METHOD(gddl_download_to_string) {
 
 GD_METHOD(gddl_download_to_array) {
 	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	godot_pool_byte_array ba;
+	api->godot_pool_byte_array_new(&ba);
 	godot_variant ret;
 
 	if (p_num_args < 1) {
@@ -260,9 +264,6 @@ GD_METHOD(gddl_download_to_array) {
 	gd_url = api->godot_variant_as_string(p_args[0]);
 	godot_char_string url_char_string = api->godot_string_utf8(&gd_url);
 	const char *url = api->godot_char_string_get_data(&url_char_string);
-
-	godot_pool_byte_array ba;
-	api->godot_pool_byte_array_new(&ba);
 
 	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data_to_binary);
@@ -334,5 +335,26 @@ GD_METHOD(gddl_get_error) {
 
 	api->godot_variant_new_string(&ret, &str);
 
+	return ret;
+}
+
+GD_METHOD(gddl_unzip){
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	godot_variant ret;
+	godot_string str;
+	api->godot_string_new(&str);
+	if (p_num_args < 2)
+		return ret;
+	godot_string zip_name = api->godot_variant_as_string(p_args[0]);
+	godot_char_string temp = api->godot_string_utf8(&zip_name);
+	const char* zip_str = api->godot_char_string_get_data(&temp);
+	godot_string path = api->godot_variant_as_string(p_args[1]);
+	godot_char_string tmp = api->godot_string_utf8(&path);
+	const char* path_str = api->godot_char_string_get_data(&tmp);
+	int retv = zip_extract(zip_str,path_str,NULL,NULL); // hope this bloody well works
+	char buf[3];
+	sprintf(buf, "%i",retv);
+	api->godot_string_parse_utf8(&str,buf);
+	api->godot_variant_new_string(&ret,&str);
 	return ret;
 }
