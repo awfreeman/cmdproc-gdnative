@@ -1,6 +1,6 @@
-# gdnative-downloader
+# OFToast II's GDNative functions
 
-This is a simple gdnative plugin that uses libcurl to download files.
+Uses Fenteale's simple gdnative downloader, with some added misc functions.
 
 ## Building
 
