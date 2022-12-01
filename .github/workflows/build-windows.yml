@@ -42,8 +42,8 @@ jobs:
 
       - name: Configure dependencies
         run: |
-          sudo sed -i 's/azure\.//' /etc/apt/sources.list
           sudo apt-get update
+          sudo apt-get upgrade
           sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev \
             libxinerama-dev libgl1-mesa-dev libglu-dev libasound2-dev libpulse-dev \
             libudev-dev libxi-dev libxrandr-dev yasm mingw-w64 libcurl4-openssl-dev
