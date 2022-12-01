@@ -17,6 +17,7 @@ jobs:
           submodules: recursive
       - name: vcpkg
         uses: friendlyanon/setup-vcpkg@v1
+        with: { committish: 6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2 }
       - name: Compilation
         run: |
           mkdir build
