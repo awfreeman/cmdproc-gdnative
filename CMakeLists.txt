@@ -22,23 +22,23 @@ if(WIN32)
         -DWIN32
         -D_WIN32
         -D_WINDOWS
-        -W3
-        -GR
+#        -W3 # warning
+#        -GR # runtime info
         -D_CRT_SECURE_NO_WARNINGS
     )
 
     if(CMAKE_BUILD_TYPE MATCHES DEBUG)
         add_compile_options(
-            -EHsc
-            -D_DEBUG
-            -MDd
+#            -EHsc # c only exception handling
+            -D_DEBUG 
+#            -MDd # library thing
         )
     else()
         add_compile_options(
             -O2
-            -EHsc
+#            -EHsc
             -DNDEBUG
-            -MD
+#            -MD
         )
     endif()
 
