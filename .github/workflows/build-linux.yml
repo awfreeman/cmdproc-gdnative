@@ -1,0 +1,33 @@
+name: CMake
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: linux
+        path: oftoast2-gdnative/project/gdnative/linuxbsd/libgddl.so
+        
+
