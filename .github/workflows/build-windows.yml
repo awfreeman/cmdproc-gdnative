@@ -1,9 +1,9 @@
 name: Windows Build
 on:
   push:
-    branches: [main]
-
-# Global Settings
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   windows-compilation:
