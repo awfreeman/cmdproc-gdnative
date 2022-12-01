@@ -18,6 +18,7 @@ jobs:
       - name: vcpkg
         uses: friendlyanon/setup-vcpkg@v1
       - name: Compilation
+        shell: bash
         run: |
           mkdir build
           cd build
