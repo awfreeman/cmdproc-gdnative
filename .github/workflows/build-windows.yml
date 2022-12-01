@@ -15,11 +15,13 @@ jobs:
         with:
           lfs: true
           submodules: recursive
+      - name: vcpkg
+        uses: friendlyanon/setup-vcpkg@v1
       - name: Compilation
         run: |
           mkdir build
           cd build
-          cmake ..
+          cmake .. -D "CMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           make
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
@@ -47,7 +49,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake ..
+          cmake .. -G "MinGW Makefiles"
           make
         
       - name: Upload Artifact
