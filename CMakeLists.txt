@@ -35,7 +35,7 @@ if(WIN32)
         )
     else()
         add_compile_options(
-            -O2
+#            -O2
 #            -EHsc
             -DNDEBUG
 #            -MD

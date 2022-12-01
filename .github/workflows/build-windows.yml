@@ -27,7 +27,7 @@ jobs:
           7z x curl-7.86.0_2-win64-mingw.zip
           copy curl-7.86.0_2-win64-mingw\bin\libcurl-x64.* .
           lib /def:libcurl-x64.def /out:libcurl-x64.lib
-          cmake .. -DCURL_LIBRARY=libcurl-x64.lib -DCURL_INCLUDE_DIR=curl-7.86.0_2-win64-mingw\include
+          cmake .. -DCURL_LIBRARY=libcurl-x64.lib -DCURL_INCLUDE_DIR="curl-7.86.0_2-win64-mingw\include"
           MSBuild ALL_BUILD.vcxproj /p:configuration=debug
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
