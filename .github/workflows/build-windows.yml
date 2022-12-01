@@ -22,7 +22,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -D "CMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake .. -D "CMAKE_TOOLCHAIN_FILE=D:/a/oftoast2-gdnative/vcpkg/scripts/buildsystems/vcpkg.cmake"
           make
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
