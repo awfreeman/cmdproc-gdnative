@@ -15,47 +15,22 @@ jobs:
         with:
           lfs: true
           submodules: recursive
-      - name: vcpkg
-        uses: friendlyanon/setup-vcpkg@v1
-        with: { committish: 63aa65e65b9d2c08772ea15d25fb8fdb0d32e557 }
+      - name: Set up Visual Studio shell
+        uses: egor-tensin/vs-shell@v2
+        with:
+          arch: x64
       - name: Compilation
         run: |
           mkdir build
           cd build
-          cmake .. -D "CMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake" 
-          make
+          aria2c https://curl.se/windows/dl-7.86.0_2/curl-7.86.0_2-win64-mingw.zip
+          7z x curl-7.86.0_2-win64-mingw.zip
+          copy curl-7.86.0_2-win64-mingw\bin\libcurl-x64.* .
+          lib /def:libcurl-x64.def /out:libcurl-x64.lib
+          cmake .. -DCURL_LIBRARY=libcurl-x64.lib -DCURL_INCLUDE_DIR=curl-7.86.0_2-win64-mingw\include
+          MSBuild ALL_BUILD.vcxproj /p:configuration=debug
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: windows-native
-          path: project/gdnative/windows/libgddl.dll
-
-  windows-cross-compilation:
-    name: Windows Cross Build
-    runs-on: "ubuntu-22.04"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          lfs: true
-          submodules: recursive
-
-      - name: Configure dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get upgrade
-          sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev \
-            libxinerama-dev libgl1-mesa-dev libglu-dev libasound2-dev libpulse-dev \
-            libudev-dev libxi-dev libxrandr-dev yasm mingw-w64 libcurl4-openssl-dev
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=../mingw.cmake
-          make
-        
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v1
-        with:
-          name: windows-cross
-          path: project/gdnative/windows/libgddl.dll
+          path: build/Debug/libgddl.dll
