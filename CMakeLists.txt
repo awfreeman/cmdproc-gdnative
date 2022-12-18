@@ -6,7 +6,8 @@ if (WIN32)
 else()
     set(PLATFORM linuxbsd)
 endif()
-
+add_definitions("-DCURL_STATICLIB")
+add_definitions("-DNGHTTP2_STATICLIB")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/project/gdnative/${PLATFORM}")
 
 project (gddl)
