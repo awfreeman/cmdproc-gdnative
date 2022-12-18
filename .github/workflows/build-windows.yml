@@ -35,4 +35,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: windows-native
-          path: build/Debug/gddl.dll
+          path: project/gdnative/windows/libgddl.dll
