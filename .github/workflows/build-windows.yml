@@ -21,15 +21,15 @@ jobs:
          install: >-
             git
             base-devel
-            libcurl-devel
-            cmake
-            gcc
+            mingw-w64-curl
+            mingw-w64-cmake
+            mingw-w64-ninja
       - shell: msys2 {0}
         run: |
           mkdir build
           cd build
-          cmake .. 
-          make
+          cmake .. -G "Ninja"
+          cmake --build .
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
