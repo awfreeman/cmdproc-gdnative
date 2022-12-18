@@ -16,9 +16,16 @@ jobs:
           lfs: true
           submodules: recursive
       - uses: msys2/setup-msys2@v2
+        with:
+         update: true
+         install: >-
+            git
+            base-devel
+            libcurl-devel
+            cmake
+            gcc
       - shell: msys2 {0}
         run: |
-          pacman -Syu --noconfirm cmake libcurl-devel gcc
           mkdir build
           cd build
           cmake .. 
