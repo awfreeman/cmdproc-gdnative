@@ -15,20 +15,14 @@ jobs:
         with:
           lfs: true
           submodules: recursive
-      - name: Set up Visual Studio shell
-        uses: egor-tensin/vs-shell@v2
-        with:
-          arch: x64
-      - name: Compilation
+      - uses: msys2/setup-msys2@v2
+      - shell: msys2 {0}
         run: |
+          pacman -Syu cmake libcurl-devel gcc
           mkdir build
           cd build
-          aria2c https://curl.se/windows/dl-7.86.0_2/curl-7.86.0_2-win64-mingw.zip
-          7z x curl-7.86.0_2-win64-mingw.zip
-          copy curl-7.86.0_2-win64-mingw\bin\libcurl-x64.* .
-          lib /def:libcurl-x64.def /out:libcurl-x64.lib
-          cmake .. -DCURL_LIBRARY=libcurl-x64.lib -DCURL_INCLUDE_DIR="curl-7.86.0_2-win64-mingw\include"
-          MSBuild ALL_BUILD.vcxproj /p:configuration=debug
+          cmake .. 
+          make
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
