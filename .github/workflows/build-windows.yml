@@ -21,9 +21,9 @@ jobs:
          install: >-
             git
             base-devel
-            mingw-w64-curl
-            mingw-w64-cmake
-            mingw-w64-ninja
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
       - shell: msys2 {0}
         run: |
           mkdir build
