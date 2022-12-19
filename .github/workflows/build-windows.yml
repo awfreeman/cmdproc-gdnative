@@ -23,14 +23,12 @@ jobs:
         run: |
           mkdir build
           cd build
-          aria2c https://curl.se/windows/dl-7.86.0_2/curl-7.86.0_2-win64-mingw.zip
-          7z x curl-7.86.0_2-win64-mingw.zip
-          copy curl-7.86.0_2-win64-mingw\bin\libcurl-x64.* .
-          lib /def:libcurl-x64.def /out:libcurl-x64.lib
-          cmake .. -DCURL_LIBRARY=libcurl-x64.lib -DCURL_INCLUDE_DIR="curl-7.86.0_2-win64-mingw\include"
+          vcpkg integrate install
+          vcpkg install curl:x64-windows-static
+          cmake .. "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
           MSBuild ALL_BUILD.vcxproj /p:configuration=debug
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: windows-native
-          path: build/Debug/libgddl.dll
+          path: project/gdnative/gddl.dll
