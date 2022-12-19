@@ -14,3 +14,5 @@ make
 ```
 
 Output bins will be placed in the `project/gdnative` folder. Simply copy the bins into the respective oftoast 2 folders.
+
+(CI uses vcpkg on Windows with MSVC to compile the file into a single dll, more ideal for distributing.)
