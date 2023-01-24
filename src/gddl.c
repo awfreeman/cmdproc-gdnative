@@ -13,6 +13,7 @@ typedef struct user_data_struct {
 	CURLcode res;
 	//Our error
 	gddl_err_code err;
+	char errbuf[CURL_ERROR_SIZE];
 } user_data_struct;
 
 typedef struct string_dat {
@@ -69,8 +70,8 @@ GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_da
 GD_METHOD(gddl_download_file);
 GD_METHOD(gddl_download_to_string);
 GD_METHOD(gddl_download_to_array);
-GD_METHOD(gddl_set_agent);
 GD_METHOD(gddl_get_error);
+GD_METHOD(gddl_get_detailed_error);
 GD_METHOD(gddl_unzip);
 
 // `gdnative_init` is a function that initializes our dynamic library.
@@ -123,8 +124,8 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	INIT_GD_METHOD(download_file);
 	INIT_GD_METHOD(download_to_string);
 	INIT_GD_METHOD(download_to_array);
-	INIT_GD_METHOD(set_agent);
 	INIT_GD_METHOD(get_error);
+	INIT_GD_METHOD(get_detailed_error);
 	INIT_GD_METHOD(unzip);
 
 }
@@ -141,7 +142,7 @@ GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_
 
 	curl_easy_setopt(user_data->curl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data);
-
+	curl_easy_setopt(user_data->curl, CURLOPT_USERAGENT, "pinnacle/0.0.1");
 	user_data->res = CURLE_OK;
 	user_data->err = GDDL_OK;
 
@@ -188,6 +189,7 @@ GD_METHOD(gddl_download_file) {
 	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, f);
+	curl_easy_setopt(user_data->curl, CURLOPT_ERRORBUFFER, user_data->errbuf);
 
 	user_data->res = curl_easy_perform(user_data->curl);
 	fclose(f);
@@ -228,6 +230,7 @@ GD_METHOD(gddl_download_to_string) {
 	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data_to_string);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, &ret_string);
+	curl_easy_setopt(user_data->curl, CURLOPT_ERRORBUFFER, user_data->errbuf);
 
 	user_data->res = curl_easy_perform(user_data->curl);
 
@@ -268,6 +271,7 @@ GD_METHOD(gddl_download_to_array) {
 	curl_easy_setopt(user_data->curl, CURLOPT_URL, url);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEFUNCTION, write_data_to_binary);
 	curl_easy_setopt(user_data->curl, CURLOPT_WRITEDATA, &ba);
+	curl_easy_setopt(user_data->curl, CURLOPT_ERRORBUFFER, user_data->errbuf);
 
 	user_data->res = curl_easy_perform(user_data->curl);
 
@@ -285,56 +289,42 @@ GD_METHOD(gddl_download_to_array) {
 	return ret;
 }
 
-GD_METHOD(gddl_set_agent) {
-	user_data_struct *user_data = (user_data_struct *)p_user_data;
-	godot_variant ret;
-	api->godot_variant_new_nil(&ret);
-
-	if (p_num_args < 1)
-		return ret;
-	
-	godot_string gd_agent;
-
-	gd_agent = api->godot_variant_as_string(p_args[0]);
-	godot_char_string agent_char_string = api->godot_string_utf8(&gd_agent);
-	const char *agent = api->godot_char_string_get_data(&agent_char_string);
-
-	curl_easy_setopt(user_data->curl, CURLOPT_USERAGENT, agent);
-
-	api->godot_char_string_destroy(&agent_char_string);
-
-	return ret;
-}
-
 GD_METHOD(gddl_get_error) {
 	user_data_struct *user_data = (user_data_struct *)p_user_data;
 	godot_variant ret;
 	godot_string str;
-
+	uint64_t errval;
 	api->godot_string_new(&str);
 	
 	switch(user_data->err) {
 		case GDDL_OK:
-			api->godot_string_parse_utf8(&str, "No error.");
+			errval = (uint64_t)0;
 			break;
 		case GDDL_CURL:
-			api->godot_string_parse_utf8(&str, curl_easy_strerror(user_data->res));
+			errval = (uint64_t)user_data->err;
 			break;
 		case GDDL_FILE:
-			api->godot_string_parse_utf8(&str, "Error opening file to write.");
+			errval = (uint64_t)998;
 			break;
 		case GDDL_BAD_ARGS:
-			api->godot_string_parse_utf8(&str, "Invalid arguments.");
+			errval = (uint64_t)997;
 			break;
 		default:
-			char buf[256];
-			sprintf(buf, "Unknown error. Error code: %d", user_data->err);
-			api->godot_string_parse_utf8(&str, buf);
+			errval = (uint64_t)user_data->err;
 			break;
 	}
 
-	api->godot_variant_new_string(&ret, &str);
+	api->godot_variant_new_uint(&ret, errval);
+	return ret;
+}
 
+GD_METHOD(gddl_get_detailed_error){
+	user_data_struct *user_data = (user_data_struct *)p_user_data;
+	godot_variant ret;
+	godot_string str;
+	api->godot_string_new(&str);
+	api->godot_string_parse_utf8(&str,user_data->errbuf);
+	api->godot_variant_new_string(&ret,&str);
 	return ret;
 }
 
