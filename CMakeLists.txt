@@ -1,5 +1,5 @@
 # min version could probably be less than this.
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.15)
 #
 if (WIN32)
     set(PLATFORM windows)
