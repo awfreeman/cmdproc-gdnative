@@ -26,7 +26,7 @@ jobs:
           vcpkg integrate install
           vcpkg install curl:x64-windows-static
           cmake .. "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
-          MSBuild ALL_BUILD.vcxproj /p:configuration=debug
+          MSBuild ALL_BUILD.vcxproj /p:configuration=release
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
