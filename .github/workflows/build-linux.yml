@@ -36,6 +36,6 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: linux
-        path: project/gdnative/linuxbsd/libgddl.so
+        path: project/gdnative/linuxbsd/libcmdshim.so
         
 
