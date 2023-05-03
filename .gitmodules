@@ -2,7 +2,3 @@
 	path = godot-headers
 	url = https://github.com/godotengine/godot-headers.git
 	branch = 3.5
-	
-[submodule "zip"]
-	path = zip
-	url = https://github.com/kuba--/zip
