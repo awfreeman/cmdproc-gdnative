@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #define BUFFER_DEFAULT_LEN 512
 
+
 typedef enum {
 	OK = 0,
 	PROCESS_STILL_EXISTS,
@@ -17,9 +18,9 @@ typedef enum {
 
 typedef struct user_data_struct {
 	FILE *proc;
+	godot_char_string command;
 	char *line_buffer;
 	size_t buffer_length;
-	run_command_error errcode;
 } user_data_struct;
 
 // GDNative supports a large collection of functions for calling back
@@ -34,7 +35,6 @@ const godot_gdnative_ext_nativescript_api_struct *nativescript_api = NULL;
 // for our object. A constructor and destructor are both necessary.
 GDCALLINGCONV void *simple_constructor(godot_object *p_instance, void *p_method_data);
 GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_data, void *p_user_data);
-//godot_variant simple_get_data(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 
 GD_METHOD(cmdshim_exec_cmd);
 GD_METHOD(cmdshim_read_line);
@@ -109,6 +109,7 @@ GDCALLINGCONV void simple_destructor(godot_object *p_instance, void *p_method_da
 	user_data_struct *user_data = (user_data_struct *)p_user_data;
 	if (user_data->proc){
 		pclose(user_data->proc);
+		api->godot_char_string_destroy(&user_data->command);
 	}
 	api->godot_free(user_data->line_buffer);
 	api->godot_free(p_user_data);
@@ -118,76 +119,71 @@ GD_METHOD(cmdshim_exec_cmd){
 	user_data_struct *userdata = (user_data_struct *)p_user_data;
 	godot_variant ret;
 	if (userdata->proc){
-		userdata->errcode = PROCESS_STILL_EXISTS;
-		api->godot_variant_new_nil(&ret);
+		api->godot_variant_new_int(&ret, PROCESS_STILL_EXISTS);
 		return ret;
 	}
 	if (!p_num_args || p_num_args > 1 || api->godot_variant_get_type(p_args[0]) != GODOT_VARIANT_TYPE_STRING){
-		userdata->errcode = INVALID_ARGS_ERROR;
-		api->godot_variant_new_nil(&ret);
+		api->godot_variant_new_int(&ret, INVALID_ARGS_ERROR);
 		return ret;
 	}
-	const godot_string gstring = api->godot_variant_as_string(p_args[0]);
-	const godot_char_string gcstring = api->godot_string_utf8(&gstring);
-	const char *cstrptr = api->godot_char_string_get_data(&gcstring);
+	godot_string gstring = api->godot_variant_as_string(p_args[0]);
+	userdata->command = api->godot_string_utf8(&gstring);
+	const char *cstrptr = api->godot_char_string_get_data(&userdata->command);
 	FILE *out = popen(cstrptr, "r");
 	if (!out){
-		userdata->errcode = PROCESS_CREATION_FAILURE;
-		api->godot_variant_new_nil(&ret);
+		api->godot_char_string_destroy(&userdata->command);
+		api->godot_variant_new_int(&ret, PROCESS_CREATION_FAILURE);
 		return ret;
 	}
-	userdata->proc = out;		
-	userdata->errcode = OK;
-	api->godot_variant_new_nil(&ret);
+	userdata->proc = out;
+	api->godot_variant_new_int(&ret, OK);
 	return ret;
-}
-
-int readline(user_data_struct *self, godot_string *string){
-	size_t offset = 0;
-	size_t lend = -1;
-	while(fgets(self->line_buffer+offset, self->buffer_length, self->proc)){
-		for(size_t x = offset; x<self->buffer_length; x++){
-			if (self->line_buffer[x] == '\n'){
-				lend = x;
-				break;
-			}
-		}
-		if (lend == -1){
-			offset = self->buffer_length-1;
-			self->line_buffer = api->godot_realloc(self->line_buffer, self->buffer_length + 128);
-			self->buffer_length+= 128;
-			continue;
-		}
-		else {
-			api->godot_string_new(string);
-			api->godot_string_parse_utf8(string, self->line_buffer);
-			return 0;
-		}
-	}
-	if(feof(self->proc)){
-		pclose(self->proc);
-		api->godot_string_new(string);
-		api->godot_string_parse_utf8(string, self->line_buffer);
-
-		return 0;
-	}
-	return -1;
 }
 
 GD_METHOD(cmdshim_read_line){
 	user_data_struct *userdata = (user_data_struct *)p_user_data;
 	godot_variant ret;
 	if (!userdata->proc){
-		api->godot_variant_new_nil(&ret);
-		userdata->errcode = INVALID_FILE;
+		api->godot_variant_new_int(&ret, (int64_t)INVALID_FILE);
 		return ret;
 	}
-	godot_string str;
-	if (readline(userdata,  &str) == -1){
-		api->godot_variant_new_nil(&ret);
-		userdata->errcode = UNKNOWN_FGET_ERROR;
+	else if(feof(userdata->proc)){
+		int exit_code = pclose(userdata->proc);
+		userdata->proc=NULL;
+		api->godot_char_string_destroy(&userdata->command);
+		godot_string str;
+		api->godot_string_new(&str);
+		api->godot_string_parse_utf8(&str, "Process exited");
+		api->godot_variant_new_string(&ret, &str);
+		api->godot_string_destroy(&str);
 		return ret;
 	}
-	api->godot_variant_new_string(&ret, &str);
+	godot_string string;
+	size_t offset = 0;
+	size_t lend = -1;
+	while(fgets(userdata->line_buffer+offset, userdata->buffer_length, userdata->proc)){
+		size_t pos = 0;
+		while(pos < userdata->buffer_length){
+			if (userdata->line_buffer[pos] == '\n'){
+				lend = pos;
+				break;
+			}
+			else if (userdata->line_buffer[pos] == '\0'){
+				break;
+			}
+			pos++;
+		}
+		if (lend == -1 && !feof(userdata->proc)){
+			offset = userdata->buffer_length-1;
+			userdata->line_buffer = api->godot_realloc(userdata->line_buffer, userdata->buffer_length + 128);
+			userdata->buffer_length += 128;
+			continue;
+		}
+		api->godot_string_new(&string);
+		api->godot_string_parse_utf8(&string, userdata->line_buffer);
+		break;
+	}
+	api->godot_variant_new_string(&ret, &string);
+	api->godot_string_destroy(&string);
 	return ret;
 }
