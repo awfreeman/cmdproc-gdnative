@@ -1,6 +1,6 @@
-# OFToast II's GDNative functions
+# cmdshim-gdnative
 
-Uses Fenteale's simple gdnative downloader, with some added misc functions.
+Uses Fenteale's simple gdnative downloader as a base for a better way to spawn processes from GDScript. 
 
 ## Building
 
@@ -13,6 +13,4 @@ cmake ..
 make
 ```
 
-Output bins will be placed in the `project/gdnative` folder. Simply copy the bins into the respective oftoast 2 folders.
-
-(CI uses vcpkg on Windows with MSVC to compile the file into a single dll, more ideal for distributing.)
+Output libraries will be placed in the `build` folder.
